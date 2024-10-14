@@ -1,0 +1,29 @@
+.formCard {
+   position: relative;
+   overflow: hidden;
+}
+.formCard::after {
+   content: "";
+   position: absolute;
+   top: -50px;
+   left: -50px;
+   width: 50px;
+   height: 50px;
+   border-radius: 50%;
+   background-color: rgba(122, 11, 212, 0.5);
+   z-index: -10;
+}
+.formCard:hover::after {
+   content: "";
+   position: absolute;
+   top: -5%;
+   left: 0;
+   width: 150%;
+   opacity: 0.7;
+   height: 150%;
+   border-radius: 0;
+   @apply bg-gradient-to-br from-cyan-400/80 to-purple-500/50;
+   z-index: -10;
+   transition: all 0.3s ease-in-out;
+}
+

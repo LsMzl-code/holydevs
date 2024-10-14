@@ -1,0 +1,18 @@
+.houseFilter p {
+   position: relative;
+}
+
+.houseFilter p::before {
+   content: "";
+   position: absolute;
+   width: 0;
+   height: 2px;
+   bottom: -2px;
+   left: 0;
+   background-color: rgb(123, 38, 235);
+   transition: 0.3s;
+}
+
+.houseFilter p:hover::before {
+   width: 100%;
+}

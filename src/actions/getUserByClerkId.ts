@@ -1,0 +1,35 @@
+import { db } from "@/lib/prisma";
+
+/**
+ * Récupère un utilisateur grâce à l'identifiant de clerk.
+ * @param userId String - Id de l'utilisateur recherché.
+ * @returns Utilisateur trouvé
+ * @creation 11.06.2024 - Louis Mazzella
+ */
+export const getUserByClerkId = async (userId: string) => {
+   try {
+      const user = await db.user.findFirst({
+         where: {
+            clerkId: userId,
+         },
+         include:{
+            houses: true,
+            opinions: {
+               select: {
+                  id: true,
+               }
+            }
+         }
+      });
+
+      //! No user found
+      if (!user) {
+         return null;
+      }
+
+      return user;
+   } catch (error: any) {
+      console.log('error', error)
+      throw new Error(error);
+   }
+};

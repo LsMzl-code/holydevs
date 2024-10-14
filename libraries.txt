@@ -1,0 +1,14 @@
+npm i uuidv4
+Image optimization with NextJs
+npm i sharp
+
+
+// Clerk
+Expérimental: Changement de langue
+npm install @clerk/localizations
+
+sign-up -> inscription
+sign-in -> connexion
+
+
+pFiWg0Uhk9VI2hCx

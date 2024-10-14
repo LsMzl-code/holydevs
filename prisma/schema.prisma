@@ -1,0 +1,471 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String   @id @default(uuid())
+  clerkId               String?  @unique
+  role                  Role     @default(USER)
+  // Informations
+  firstname             String?
+  lastname              String?
+  username              String?  @unique
+  phone                 String?
+  profilePicture        String?  @db.Text
+  coverPicture          String?  @db.Text
+  // Localisation
+  country               String?
+  state                 String?
+  city                  String?
+  address               String?
+  // Informations complémentaires
+  biography             String?  @db.Text
+  interests             String?
+  languages             String?
+  // Identifiants
+  email                 String   @unique
+  // Création, modification
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  // Propriétaire ou non
+  isOwner               Boolean  @default(false)
+  // Onboarding
+  isOnboardingCompleted Boolean  @default(false)
+
+  //! Un utilisateur peut avoir 1 ou plusieurs maisons
+  houses     House[]
+  //! Un utilisateur peut ecrire 1 ou plusieurs avis
+  opinions   Opinion[]
+  //! Un utilisateur peut appartenir à 1 ou plusieurs groupes
+  groups     UsersOnGroups[]
+  //! Un utilisateur peut mettre 1 ou plusieurs likes
+  likes      Like[]
+  //! Un utilisateur peut écrire 1 ou plusieurs posts
+  posts      Post[]
+  //! Un utilisateur peut ecrires plusieurs commentaires
+  comments   Comment[]
+  //! Un utilisateur peut avoir 0 ou plusieurs favoris
+  favourites Favourite[]
+  //! Un utilisateur peut mettre 0 ou plusieurs notes
+  rates      Rates[]
+  //! Un utilisateur peut avoir 0 ou plusieurs todoList
+  todos      Todolist[]
+  //! Un utilisateur peut effectuer 0 ou plusieurs réservations
+  // bookings      Booking[]
+  //! Un utilisateur peut suivre 0 ou plusieurs utilisateurs
+  followings      Friend[] @relation("UserFollowings")
+  //! Un utilisateur peut être suivi par 0 ou plusieurs utilisateurs
+  followers      Friend[] @relation("UserFollowers")
+  //! Un utilisateur peut être envoyer 0 ou plusieurs demandes d'amis
+  followRequestSent FriendRequest[] @relation("FollowRequestSent")
+  //! Un utilisateur peut être recevoir 0 ou plusieurs demandes d'amis
+  followRequestReceived FriendRequest[] @relation("FollowRequestReceived")
+  //! Un utilisateur peut blocquer 0 ou plusieurs utilisateurs
+  blocks Block[] @relation("BlocksSent")
+  //! Un utilisateur peut être bloqué par 0 ou plusieurs utilisateurs
+  blockedBy Block[] @relation("BlocksReceived")
+  //! Messages
+  messageSend Message[] @relation("MessageSender")
+  messageReceive Message[] @relation("MessageReceiver")
+  //! Discussion
+  discussion Discussion[] @relation("DiscussionOwner")
+  discussionFriend Discussion[] @relation("DiscussionFriend")
+
+
+
+  // Sessions          Session[]
+  // VerificationToken VerificationToken[]
+}
+
+//* Notes sur les maisons
+model Rates {
+  id        String   @id @default(uuid())
+  rate      Float
+  //! Une note n'a qu'un seul auteur
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  //! Une note ne concerne qu'une seule maison
+  house     House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  houseId   String
+  // Création, modification
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//* Avis clients sur les maisons
+model Opinion {
+  id        String   @id @default(uuid())
+  title     String?  @db.VarChar(255)
+  content   String   @db.Text
+  // Création, modification
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  //! Un avis n'a qu'un seul auteur
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  //! Un avis concerne une seule maison
+  house     House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  houseId   String
+
+  @@index([authorId])
+  @@index([houseId])
+}
+
+//* Groupes d'utilisateurs
+model Group {
+  id    String          @id @default(uuid())
+  name  String
+  //! Un groupe peut avoir 1 ou plusieurs utilisateurs
+  users UsersOnGroups[]
+}
+
+//* Amis / Followers
+model Friend {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  follower    User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  followerId  String
+  following    User     @relation("UserFollowings", fields: [followingId], references: [id], onDelete: Cascade)
+  followingId  String
+}
+
+model FriendRequest {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  sender    User     @relation("FollowRequestSent", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+  receiver    User     @relation("FollowRequestReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId  String
+
+  //! On ne peut demander qu'une seule fois un utilisateur en ami
+  @@unique([senderId, receiverId])
+}
+
+//* Personne bloquée
+model Block {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  //! Personne qui bloque
+  blocker    User     @relation("BlocksSent", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockerId  String
+  //! Personne bloquée
+  blocked    User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  blockedId  String
+
+  //! On ne peut bloquer qu'une seule fois un utilisateur
+  @@unique([blockedId, blockerId])
+}
+
+
+
+//* Annonces
+model House {
+  id           String   @id @default(uuid())
+  // Localisation
+  country      String
+  state        String
+  city         String
+  address      String
+  // Création, modification
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+  // Informations
+  title        String   @db.Text
+  image        String?  @db.Text
+  introduction String?
+  description  String   @db.Text
+  // Propriétaire
+  ownerId      String
+  price        Int?
+  // Features
+  bedroom      Int?
+  kitchen      Int?
+  bathroom     Int?
+  // Disponibilité
+  isAvailable  Boolean  @default(true)
+  // Relations
+  //! Many to Many catégories
+  categories CategoriesOnHouses[]
+  //! Many to Many types
+  types      TypesOnHouses[]
+  //! Many to Many équipements
+  features   FeaturesOnHouses[]
+  // Avis client
+  //! Une maison peut avoir 0 ou plusieurs avis
+  Opinions   Opinion[]
+  // Réservations
+  //! Une maison peut avoir plusieurs réservations
+  bookings   Booking[]
+  //! Une maison n'a qu'un seul propriétaire
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  //! Une maison peut être dans 0 ou plusieurs favoris
+  favourites Favourite[]
+  //! Une maison peut avoir 0 ou plusieurs notes
+  rates      Rates[]
+
+  @@index([ownerId])
+}
+
+//* Favoris utilisateur
+model Favourite {
+  id      String @id @default(uuid())
+  //! Un favorite ne concerne qu'une seule maison
+  house   House  @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  houseId String
+  //! Un favorite n'appartient qu'à un seul utilisateur
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+}
+
+//* Catégories de maisons
+model Category {
+  id        String               @id @default(uuid())
+  name      String               @unique
+  image     String?
+  // Création, modification
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @default(now())
+  // Maisons
+  houses    CategoriesOnHouses[]
+}
+
+model Type {
+  id        String          @id @default(uuid())
+  name      String          @unique
+  image     String?
+  // Création, modification
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @default(now())
+  // Maisons
+  houses    TypesOnHouses[]
+}
+
+//* Equipements de maisons (wifi, parking, etc...)
+model Feature {
+  id        String             @id @default(uuid())
+  name      String             @unique
+  image     String?
+  // Création, modification
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @default(now())
+  houses    FeaturesOnHouses[]
+}
+
+//* Réservations
+model Booking {
+  id              String   @id @default(uuid())
+  // Personne qui réserve
+  userName        String
+  userId          String
+  userEmail       String
+  //! Une reservation ne concerne qu'un seul tutilisateur
+  // user   User @relation(fields: [userId], references: [id])
+  // userId String
+  // Maison réservée
+  //! Une réservation n'a qu'une seule maison
+  House           House?   @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  houseId         String?
+  // Propriétaire de la maison
+  houseOwnerId    String
+  // Dates de la réservation
+  startDate       DateTime
+  endDate         DateTime
+  // Devise
+  currency        String   @default("Euro")
+  // Prix et status du paiement
+  totalPrice      Int
+  paymentStatus   Boolean  @default(false)
+  paymentIntentId String   @unique
+  // Date de la réservation
+  bookedAt        DateTime @default(now())
+
+  @@index([houseId])
+}
+
+//* Publications
+model Post {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  image     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  //! Un post n'a qu'un seul auteur
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  //! Un post peut avoir 0 et plusieurs commentaires
+  comments Comment[]
+  
+  //! Un post peut avoir 0 et plusieurs likes
+  likes Like[]
+}
+
+//* Commentaires sur les posts
+model Comment {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //! Un commentaire n'a qu'un seul auteur
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+
+  //! Un commentaire n'a qu'un seul post
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String
+
+  //! Un commentaire peut avoir 0 et plusieurs likes
+  likes Like[]
+}
+
+//* Likes sur les posts
+model Like {
+  id        String  @id @default(uuid())
+  //! Un like n'a qu'un seul post
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String?
+  //! Un commentaire n'appartient n'a un seul post
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String?
+  //! Un like n'a qu'un seul auteur
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+}
+
+//* TodoList de préparation réservation
+model Todolist {
+  id   String  @id @default(uuid())
+  // Nom de la liste choisie par l'utilisateur
+  name String
+  
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @default(now())
+
+  //! 1 todo n'appartient qu'a un seul user
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  // Taches
+  tasks Task[]
+}
+
+//* Taches des todo lists
+model Task {
+  id   String @id @default(uuid())
+  name String
+  description String? @db.VarChar(255)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @default(now())
+
+  //! 1 tache n'appartient qu'a une seule todolist
+  todoList   Todolist @relation(fields: [todoListId], references: [id], onDelete: Cascade)
+  todoListId String
+
+  isDone Boolean @default(false)
+}
+
+//* Messagerie
+model Discussion{
+  id   String @id @default(uuid())
+
+  createdAt DateTime           @default(now())
+
+    // 1 envoyeur
+  owner   User @relation("DiscussionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+
+  // 1 receveur
+  friend   User @relation("DiscussionFriend", fields: [friendId], references: [id], onDelete: Cascade)
+  friendId String
+
+  
+
+  //! Une discussion peut avoir plusieurs 1 ou plusieurs messages
+  messages   Message[]
+
+
+}
+
+//* Messages dans la messagerie
+model Message{
+  id   String @id @default(uuid())
+
+  content String @db.VarChar(255)
+
+  // 1 envoyeur
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId String
+
+  // 1 receveur
+  receiver   User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId String
+
+  sendAt DateTime @default(now())
+  updateAt DateTime @default(now())
+
+  //! Messag lu on non
+  isRead Boolean @default(false)
+
+  //! 1 message appartient à une discussion
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  discussionId String
+
+}
+
+//* Many to many entre groupes et users
+model UsersOnGroups {
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+  user    User   @relation(fields: [userId], references: [id])
+  userId  String
+
+  @@id([groupId, userId])
+}
+
+//* Many to many entre catégories et maisons
+model CategoriesOnHouses {
+  house        House    @relation(fields: [houseId], references: [id])
+  houseId      String
+  category     Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+
+  @@id([houseId, categoryId])
+}
+
+//* Many to many entre types et maisons
+model TypesOnHouses {
+  house         House     @relation(fields: [houseId], references: [id])
+  houseId       String
+  type     Type @relation(fields: [typeId], references: [id])
+  typeId String
+
+  @@id([houseId, typeId])
+}
+
+//* Many to many entre équipements et maisons
+model FeaturesOnHouses {
+  house       House   @relation(fields: [houseId], references: [id])
+  houseId     String
+  feature     Feature @relation(fields: [featureId], references: [id])
+  featureId String
+
+  @@id([houseId, featureId])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
